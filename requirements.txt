@@ -12,3 +12,4 @@ sentence-transformers>=2.2.2
 pypdf>=3.17.1
 numpy>=1.24.0
 pandas>=2.0.0
+pyaudio
