@@ -105,45 +105,45 @@ def get_rag_response(query, vector_store):
         return f"Error in RAG response: {str(e)}"
 
 def listen_for_speech():
-    """Speech recognition for English"""
-    recognizer = sr.Recognizer()
+    """Speech recognition using browser's Web Speech API"""
+    st.info("🎤 Click the microphone button to start speaking!")
     
-    with sr.Microphone() as source:
-        st.info("🎤 Listening... Speak in English!")
+    # Create a microphone input component
+    audio_bytes = st.audio_recorder(
+        text="Click to record",
+        recording_color="#e74c3c",
+        neutral_color="#3498db",
+        icon_name="microphone",
+        icon_size="2x",
+    )
+    
+    if audio_bytes:
+        # Save the audio bytes to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_file:
+            temp_file.write(audio_bytes)
+            temp_path = temp_file.name
+        
         try:
-            # Adjust for ambient noise
-            recognizer.adjust_for_ambient_noise(source, duration=1)
-            
-            # Configure speech recognition parameters
-            recognizer.dynamic_energy_threshold = True
-            recognizer.energy_threshold = 300
-            recognizer.pause_threshold = 1.5
-            recognizer.phrase_threshold = 0.3
-            recognizer.non_speaking_duration = 1.0
-            
-            # Listen for speech
-            audio = recognizer.listen(
-                source,
-                timeout=45,
-                phrase_time_limit=45
-            )
-            
-            try:
+            # Use speech recognition on the saved audio file
+            recognizer = sr.Recognizer()
+            with sr.AudioFile(temp_path) as source:
+                audio = recognizer.record(source)
                 text = recognizer.recognize_google(audio, language='en-US')
                 return text
-            except sr.UnknownValueError:
-                st.error("Could not understand audio. Please try speaking again.")
-                return "Could not understand audio"
-            except sr.RequestError as e:
-                st.error(f"Error with speech recognition service: {e}")
-                return f"Error with speech recognition service: {e}"
-                
-        except sr.WaitTimeoutError:
-            st.error("Timeout: No speech detected. Please try speaking again.")
-            return "Timeout: No speech detected"
-        except Exception as e:
-            st.error(f"Error during speech recognition: {str(e)}")
-            return f"Error during speech recognition: {str(e)}"
+        except sr.UnknownValueError:
+            st.error("Could not understand audio. Please try speaking again.")
+            return "Could not understand audio"
+        except sr.RequestError as e:
+            st.error(f"Error with speech recognition service: {e}")
+            return f"Error with speech recognition service: {e}"
+        finally:
+            # Clean up the temporary file
+            try:
+                os.unlink(temp_path)
+            except:
+                pass
+    
+    return None
 
 def speak_text(text):
     """Convert text to speech using gTTS"""
@@ -156,19 +156,10 @@ def speak_text(text):
         tts = gTTS(text=text, lang='en', slow=False)
         tts.save(temp_filename)
         
-        if PYGAME_AVAILABLE:
-            # Play the audio using pygame
-            pygame.mixer.music.load(temp_filename)
-            pygame.mixer.music.play()
-            
-            # Wait for the audio to finish playing
-            while pygame.mixer.music.get_busy():
-                pygame.time.Clock().tick(10)
-        else:
-            # Alternative: Create an audio player using Streamlit's audio component
-            with open(temp_filename, 'rb') as audio_file:
-                audio_bytes = audio_file.read()
-                st.audio(audio_bytes, format='audio/mp3')
+        # Create an audio player using Streamlit's audio component
+        with open(temp_filename, 'rb') as audio_file:
+            audio_bytes = audio_file.read()
+            st.audio(audio_bytes, format='audio/mp3')
             
         # Clean up the temporary file
         try:
